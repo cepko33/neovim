@@ -260,7 +260,7 @@ struct funccall_S {
   int returned;                 /* ":return" used */
   struct                        /* fixed variables for arguments */
   {
-    dictitem_T var;                     /* variable (without room for name) */
+    dictitem_T dvar;                     /* variable (without room for name) */
     char_u room[VAR_SHORT_LEN];         /* room for the name */
   } fixvar[FIXVAR_CNT];
   dict_T l_vars;                /* l: local function variables */
@@ -18436,7 +18436,7 @@ call_user_func (
   if (selfdict != NULL) {
     /* Set l:self to "selfdict".  Use "name" to avoid a warning from
      * some compiler that checks the destination size. */
-    v = &fc->fixvar[fixvar_idx++].var;
+    v = &fc->fixvar[fixvar_idx++].dvar;
     name = v->di_key;
     STRCPY(name, "self");
     v->di_flags = DI_FLAGS_RO + DI_FLAGS_FIX;
@@ -18453,11 +18453,11 @@ call_user_func (
    * Set a:000 to a list with room for the "..." arguments.
    */
   init_var_dict(&fc->l_avars, &fc->l_avars_var, VAR_SCOPE);
-  add_nr_var(&fc->l_avars, &fc->fixvar[fixvar_idx++].var, "0",
+  add_nr_var(&fc->l_avars, &fc->fixvar[fixvar_idx++].dvar, "0",
       (varnumber_T)(argcount - fp->uf_args.ga_len));
   /* Use "name" to avoid a warning from some compiler that checks the
    * destination size. */
-  v = &fc->fixvar[fixvar_idx++].var;
+  v = &fc->fixvar[fixvar_idx++].dvar;
   name = v->di_key;
   STRCPY(name, "000");
   v->di_flags = DI_FLAGS_RO | DI_FLAGS_FIX;
@@ -18474,9 +18474,9 @@ call_user_func (
    * Set a:name to named arguments.
    * Set a:N to the "..." arguments.
    */
-  add_nr_var(&fc->l_avars, &fc->fixvar[fixvar_idx++].var, "firstline",
+  add_nr_var(&fc->l_avars, &fc->fixvar[fixvar_idx++].dvar, "firstline",
       (varnumber_T)firstline);
-  add_nr_var(&fc->l_avars, &fc->fixvar[fixvar_idx++].var, "lastline",
+  add_nr_var(&fc->l_avars, &fc->fixvar[fixvar_idx++].dvar, "lastline",
       (varnumber_T)lastline);
   for (i = 0; i < argcount; ++i) {
     ai = i - fp->uf_args.ga_len;
@@ -18489,7 +18489,7 @@ call_user_func (
       name = numbuf;
     }
     if (fixvar_idx < FIXVAR_CNT && STRLEN(name) <= VAR_SHORT_LEN) {
-      v = &fc->fixvar[fixvar_idx++].var;
+      v = &fc->fixvar[fixvar_idx++].dvar;
       v->di_flags = DI_FLAGS_RO | DI_FLAGS_FIX;
     } else   {
       v = (dictitem_T *)alloc((unsigned)(sizeof(dictitem_T)

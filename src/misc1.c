@@ -2721,19 +2721,19 @@ void vim_beep(void)          {
 static char_u   *homedir = NULL;
 
 void init_homedir(void)          {
-  char_u  *var;
+  char_u  *envstr;
 
   /* In case we are called a second time (when 'encoding' changes). */
   vim_free(homedir);
   homedir = NULL;
 
-  var = mch_getenv((char_u *)"HOME");
+  envstr = mch_getenv((char_u *)"HOME");
 
-  if (var != NULL && *var == NUL)       /* empty is same as not set */
-    var = NULL;
+  if (envstr != NULL && *envstr == NUL)       /* empty is same as not set */
+    envstr = NULL;
 
 
-  if (var != NULL) {
+  if (envstr != NULL) {
 #ifdef UNIX
     /*
      * Change to the directory and get the actual path.  This resolves
@@ -2741,13 +2741,13 @@ void init_homedir(void)          {
      */
     if (mch_dirname(NameBuff, MAXPATHL) == OK
         && mch_chdir((char *)NameBuff) == 0) {
-      if (!mch_chdir((char *)var) && mch_dirname(IObuff, IOSIZE) == OK)
-        var = IObuff;
+      if (!mch_chdir((char *)envstr) && mch_dirname(IObuff, IOSIZE) == OK)
+        envstr = IObuff;
       if (mch_chdir((char *)NameBuff) != 0)
         EMSG(_(e_prev_dir));
     }
 #endif
-    homedir = vim_strsave(var);
+    homedir = vim_strsave(envstr);
   }
 }
 

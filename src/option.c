@@ -292,7 +292,7 @@ struct vimoption {
   char        *fullname;        /* full option name */
   char        *shortname;       /* permissible abbreviation */
   long_u flags;                 /* see below */
-  char_u      *var;             /* global option: pointer to variable;
+  char_u      *p_var;             /* global option: pointer to variable;
                                 * window-local option: VAR_WIN;
                                 * buffer-local option: global value */
   idopt_T indir;                /* global option: PV_NONE;
@@ -2140,12 +2140,12 @@ void set_init_1(void)          {
    */
   for (opt_idx = 0; !istermoption(&options[opt_idx]); opt_idx++) {
     if ((options[opt_idx].flags & P_GETTEXT)
-        && options[opt_idx].var != NULL)
-      p = (char_u *)_(*(char **)options[opt_idx].var);
+        && options[opt_idx].p_var != NULL)
+      p = (char_u *)_(*(char **)options[opt_idx].p_var);
     else
       p = option_expand(opt_idx, NULL);
     if (p != NULL && (p = vim_strsave(p)) != NULL) {
-      *(char_u **)options[opt_idx].var = p;
+      *(char_u **)options[opt_idx].p_var = p;
       /* VIMEXP
        * Defaults for all expanded options are currently the same for Vi
        * and Vim.  When this changes, add some code here!  Also need to
@@ -2370,14 +2370,14 @@ void free_all_options(void)          {
   for (i = 0; !istermoption(&options[i]); i++) {
     if (options[i].indir == PV_NONE) {
       /* global option: free value and default value. */
-      if (options[i].flags & P_ALLOCED && options[i].var != NULL)
-        free_string_option(*(char_u **)options[i].var);
+      if (options[i].flags & P_ALLOCED && options[i].p_var != NULL)
+        free_string_option(*(char_u **)options[i].p_var);
       if (options[i].flags & P_DEF_ALLOCED)
         free_string_option(options[i].def_val[VI_DEFAULT]);
-    } else if (options[i].var != VAR_WIN
+    } else if (options[i].p_var != VAR_WIN
                && (options[i].flags & P_STRING))
       /* buffer-local option: free global value */
-      free_string_option(*(char_u **)options[i].var);
+      free_string_option(*(char_u **)options[i].p_var);
   }
 }
 
@@ -2760,7 +2760,7 @@ do_set (
       }
 
       if (opt_idx >= 0) {
-        if (options[opt_idx].var == NULL) {         /* hidden option: skip */
+        if (options[opt_idx].p_var == NULL) {         /* hidden option: skip */
           /* Only give an error message when requesting the value of
            * a hidden option, ignore setting it. */
           if (vim_strchr((char_u *)"=:!&<", nextchar) == NULL
@@ -2786,12 +2786,12 @@ do_set (
       /* Skip all options that are not window-local (used when showing
        * an already loaded buffer in a window). */
       if ((opt_flags & OPT_WINONLY)
-          && (opt_idx < 0 || options[opt_idx].var != VAR_WIN))
+          && (opt_idx < 0 || options[opt_idx].p_var != VAR_WIN))
         goto skip;
 
       /* Skip all options that are window-local (used for :vimgrep). */
       if ((opt_flags & OPT_NOWIN) && opt_idx >= 0
-          && options[opt_idx].var == VAR_WIN)
+          && options[opt_idx].p_var == VAR_WIN)
         goto skip;
 
       /* Disallow changing some options from modelines. */
@@ -2858,7 +2858,7 @@ do_set (
           showoneopt(&options[opt_idx], opt_flags);
           if (p_verbose > 0) {
             /* Mention where the option was last set. */
-            if (varp == options[opt_idx].var)
+            if (varp == options[opt_idx].p_var)
               last_set_msg(options[opt_idx].scriptID);
             else if ((int)options[opt_idx].indir & PV_WIN)
               last_set_msg(curwin->w_p_scriptID[
@@ -3014,7 +3014,7 @@ do_set (
              * reset, use the global value here. */
             if ((opt_flags & (OPT_LOCAL | OPT_GLOBAL)) == 0
                 && ((int)options[opt_idx].indir & PV_BOTH))
-              varp = options[opt_idx].var;
+              varp = options[opt_idx].p_var;
 
             /* The old value is kept until we are sure that the
              * new value is valid. */
@@ -3566,7 +3566,7 @@ char_u *find_viminfo_parameter(int type)
 static char_u *option_expand(int opt_idx, char_u *val)
 {
   /* if option doesn't need expansion nothing to do */
-  if (!(options[opt_idx].flags & P_EXPAND) || options[opt_idx].var == NULL)
+  if (!(options[opt_idx].flags & P_EXPAND) || options[opt_idx].p_var == NULL)
     return NULL;
 
   /* If val is longer than MAXPATHL no meaningful expansion can be done,
@@ -3575,7 +3575,7 @@ static char_u *option_expand(int opt_idx, char_u *val)
     return NULL;
 
   if (val == NULL)
-    val = *(char_u **)options[opt_idx].var;
+    val = *(char_u **)options[opt_idx].p_var;
 
   /*
    * Expanding this with NameBuff, expand_env() must not be passed IObuff.
@@ -3584,8 +3584,8 @@ static char_u *option_expand(int opt_idx, char_u *val)
    * For 'spellsuggest' expand after "file:".
    */
   expand_env_esc(val, NameBuff, MAXPATHL,
-      (char_u **)options[opt_idx].var == &p_tags, FALSE,
-      (char_u **)options[opt_idx].var == &p_sps ? (char_u *)"file:" :
+      (char_u **)options[opt_idx].p_var == &p_tags, FALSE,
+      (char_u **)options[opt_idx].p_var == &p_sps ? (char_u *)"file:" :
       NULL);
   if (STRCMP(NameBuff, val) == 0)     /* they are the same */
     return NULL;
@@ -3625,7 +3625,7 @@ void check_options(void)          {
   int opt_idx;
 
   for (opt_idx = 0; options[opt_idx].fullname != NULL; opt_idx++)
-    if ((options[opt_idx].flags & P_STRING) && options[opt_idx].var != NULL)
+    if ((options[opt_idx].flags & P_STRING) && options[opt_idx].p_var != NULL)
       check_string_option((char_u **)get_varp(&(options[opt_idx])));
 }
 
@@ -3713,7 +3713,7 @@ void set_term_option_alloced(char_u **p)
   int opt_idx;
 
   for (opt_idx = 1; options[opt_idx].fullname != NULL; opt_idx++)
-    if (options[opt_idx].var == (char_u *)p) {
+    if (options[opt_idx].p_var == (char_u *)p) {
       options[opt_idx].flags |= P_ALLOCED;
       return;
     }
@@ -3797,7 +3797,7 @@ set_string_option_direct (
     }
   }
 
-  if (options[idx].var == NULL)         /* can't set hidden option */
+  if (options[idx].p_var == NULL)         /* can't set hidden option */
     return;
 
   s = vim_strsave(val);
@@ -3838,10 +3838,10 @@ set_string_option_global (
   char_u      **p, *s;
 
   /* the global value is always allocated */
-  if (options[opt_idx].var == VAR_WIN)
+  if (options[opt_idx].p_var == VAR_WIN)
     p = (char_u **)GLOBAL_WO(varp);
   else
-    p = (char_u **)options[opt_idx].var;
+    p = (char_u **)options[opt_idx].p_var;
   if (options[opt_idx].indir != PV_NONE
       && p != varp
       && (s = vim_strsave(*varp)) != NULL) {
@@ -3867,7 +3867,7 @@ set_string_option (
   char_u      *oldval;
   char_u      *r = NULL;
 
-  if (options[opt_idx].var == NULL)     /* don't set hidden option */
+  if (options[opt_idx].p_var == NULL)     /* don't set hidden option */
     return NULL;
 
   s = vim_strsave(value);
@@ -6369,7 +6369,7 @@ int makeset(FILE *fd, int opt_flags, int local_only)
 
         round = 2;
         if (p->indir != PV_NONE) {
-          if (p->var == VAR_WIN) {
+          if (p->p_var == VAR_WIN) {
             /* skip window-local option when only doing globals */
             if (!(opt_flags & OPT_LOCAL))
               continue;
@@ -6538,10 +6538,10 @@ void free_termoptions(void)          {
   for (p = &options[0]; p->fullname != NULL; p++)
     if (istermoption(p)) {
       if (p->flags & P_ALLOCED)
-        free_string_option(*(char_u **)(p->var));
+        free_string_option(*(char_u **)(p->p_var));
       if (p->flags & P_DEF_ALLOCED)
         free_string_option(p->def_val[VI_DEFAULT]);
-      *(char_u **)(p->var) = empty_option;
+      *(char_u **)(p->p_var) = empty_option;
       p->def_val[VI_DEFAULT] = empty_option;
       p->flags &= ~(P_ALLOCED|P_DEF_ALLOCED);
     }
@@ -6558,10 +6558,11 @@ void free_one_termoption(char_u *var)
   struct vimoption   *p;
 
   for (p = &options[0]; p->fullname != NULL; p++)
-    if (p->var == var) {
+    if (p->p_var == var) {
       if (p->flags & P_ALLOCED)
-        free_string_option(*(char_u **)(p->var));
-      *(char_u **)(p->var) = empty_option;
+        free_string_option(*(char_u **)(p->p_var
+));
+      *(char_u **)(p->p_var) = empty_option;
       p->flags &= ~P_ALLOCED;
       break;
     }
@@ -6575,12 +6576,12 @@ void set_term_defaults(void)          {
   struct vimoption   *p;
 
   for (p = &options[0]; p->fullname != NULL; p++) {
-    if (istermoption(p) && p->def_val[VI_DEFAULT] != *(char_u **)(p->var)) {
+    if (istermoption(p) && p->def_val[VI_DEFAULT] != *(char_u **)(p->p_var)) {
       if (p->flags & P_DEF_ALLOCED) {
         free_string_option(p->def_val[VI_DEFAULT]);
         p->flags &= ~P_DEF_ALLOCED;
       }
-      p->def_val[VI_DEFAULT] = *(char_u **)(p->var);
+      p->def_val[VI_DEFAULT] = *(char_u **)(p->p_var);
       if (p->flags & P_ALLOCED) {
         p->flags |= P_DEF_ALLOCED;
         p->flags &= ~P_ALLOCED;          /* don't free the value now */
@@ -6698,9 +6699,9 @@ void unset_global_local_option(char_u *name, void *from)
 static char_u *get_varp_scope(struct vimoption *p, int opt_flags)
 {
   if ((opt_flags & OPT_GLOBAL) && p->indir != PV_NONE) {
-    if (p->var == VAR_WIN)
+    if (p->p_var == VAR_WIN)
       return (char_u *)GLOBAL_WO(get_varp(p));
-    return p->var;
+    return p->p_var;
   }
   if ((opt_flags & OPT_LOCAL) && ((int)p->indir & PV_BOTH)) {
     switch ((int)p->indir) {
@@ -6731,43 +6732,44 @@ static char_u *get_varp_scope(struct vimoption *p, int opt_flags)
 static char_u *get_varp(struct vimoption *p)
 {
   /* hidden option, always return NULL */
-  if (p->var == NULL)
+  if (p->p_var == NULL)
     return NULL;
 
   switch ((int)p->indir) {
-  case PV_NONE:   return p->var;
+  case PV_NONE:   return p->p_var
+;
 
   /* global option with local value: use local value if it's been set */
   case PV_EP:     return *curbuf->b_p_ep != NUL
-           ? (char_u *)&curbuf->b_p_ep : p->var;
+           ? (char_u *)&curbuf->b_p_ep : p->p_var;
   case PV_KP:     return *curbuf->b_p_kp != NUL
-           ? (char_u *)&curbuf->b_p_kp : p->var;
+           ? (char_u *)&curbuf->b_p_kp : p->p_var;
   case PV_PATH:   return *curbuf->b_p_path != NUL
-           ? (char_u *)&(curbuf->b_p_path) : p->var;
+           ? (char_u *)&(curbuf->b_p_path) : p->p_var;
   case PV_AR:     return curbuf->b_p_ar >= 0
-           ? (char_u *)&(curbuf->b_p_ar) : p->var;
+           ? (char_u *)&(curbuf->b_p_ar) : p->p_var;
   case PV_TAGS:   return *curbuf->b_p_tags != NUL
-           ? (char_u *)&(curbuf->b_p_tags) : p->var;
+           ? (char_u *)&(curbuf->b_p_tags) : p->p_var;
   case PV_DEF:    return *curbuf->b_p_def != NUL
-           ? (char_u *)&(curbuf->b_p_def) : p->var;
+           ? (char_u *)&(curbuf->b_p_def) : p->p_var;
   case PV_INC:    return *curbuf->b_p_inc != NUL
-           ? (char_u *)&(curbuf->b_p_inc) : p->var;
+           ? (char_u *)&(curbuf->b_p_inc) : p->p_var;
   case PV_DICT:   return *curbuf->b_p_dict != NUL
-           ? (char_u *)&(curbuf->b_p_dict) : p->var;
+           ? (char_u *)&(curbuf->b_p_dict) : p->p_var;
   case PV_TSR:    return *curbuf->b_p_tsr != NUL
-           ? (char_u *)&(curbuf->b_p_tsr) : p->var;
+           ? (char_u *)&(curbuf->b_p_tsr) : p->p_var;
   case PV_EFM:    return *curbuf->b_p_efm != NUL
-           ? (char_u *)&(curbuf->b_p_efm) : p->var;
+           ? (char_u *)&(curbuf->b_p_efm) : p->p_var;
   case PV_GP:     return *curbuf->b_p_gp != NUL
-           ? (char_u *)&(curbuf->b_p_gp) : p->var;
+           ? (char_u *)&(curbuf->b_p_gp) : p->p_var;
   case PV_MP:     return *curbuf->b_p_mp != NUL
-           ? (char_u *)&(curbuf->b_p_mp) : p->var;
+           ? (char_u *)&(curbuf->b_p_mp) : p->p_var;
   case PV_CM:     return *curbuf->b_p_cm != NUL
-           ? (char_u *)&(curbuf->b_p_cm) : p->var;
+           ? (char_u *)&(curbuf->b_p_cm) : p->p_var;
   case PV_STL:    return *curwin->w_p_stl != NUL
-           ? (char_u *)&(curwin->w_p_stl) : p->var;
+           ? (char_u *)&(curwin->w_p_stl) : p->p_var;
   case PV_UL:     return curbuf->b_p_ul != NO_LOCAL_UNDOLEVEL
-           ? (char_u *)&(curbuf->b_p_ul) : p->var;
+           ? (char_u *)&(curbuf->b_p_ul) : p->p_var;
 
   case PV_ARAB:   return (char_u *)&(curwin->w_p_arab);
   case PV_LIST:   return (char_u *)&(curwin->w_p_list);
@@ -7278,7 +7280,7 @@ set_context_in_set_cmd (
       *p = NUL;
       opt_idx = findoption(arg);
       *p = nextchar;
-      if (opt_idx == -1 || options[opt_idx].var == NULL) {
+      if (opt_idx == -1 || options[opt_idx].p_var == NULL) {
         xp->xp_context = EXPAND_NOTHING;
         return;
       }
@@ -7315,7 +7317,7 @@ set_context_in_set_cmd (
   xp->xp_pattern = p + 1;
 
   if (flags & P_EXPAND) {
-    p = options[opt_idx].var;
+    p = options[opt_idx].p_var;
     if (p == (char_u *)&p_bdir
         || p == (char_u *)&p_dir
         || p == (char_u *)&p_path
@@ -7356,7 +7358,7 @@ set_context_in_set_cmd (
     }
 
     /* for 'spellsuggest' start at "file:" */
-    if (options[opt_idx].var == (char_u *)&p_sps
+    if (options[opt_idx].p_var == (char_u *)&p_sps
         && STRNCMP(p, "file:", 5) == 0) {
       xp->xp_pattern = p + 5;
       break;
@@ -7398,7 +7400,7 @@ int ExpandSettings(expand_T *xp, regmatch_T *regmatch, int *num_file, char_u ***
     }
     for (opt_idx = 0; (str = (char_u *)options[opt_idx].fullname) != NULL;
          opt_idx++) {
-      if (options[opt_idx].var == NULL)
+      if (options[opt_idx].p_var == NULL)
         continue;
       if (xp->xp_context == EXPAND_BOOL_SETTINGS
           && !(options[opt_idx].flags & P_BOOL))
@@ -7587,12 +7589,12 @@ option_value2string (
     if (varp == NULL)                       /* just in case */
       NameBuff[0] = NUL;
     /* don't show the actual value of 'key', only that it's set */
-    else if (opp->var == (char_u *)&p_key && *varp)
+    else if (opp->p_var == (char_u *)&p_key && *varp)
       STRCPY(NameBuff, "*****");
     else if (opp->flags & P_EXPAND)
       home_replace(NULL, varp, NameBuff, MAXPATHL, FALSE);
     /* Translate 'pastetoggle' into special key names */
-    else if ((char_u **)opp->var == &p_pt)
+    else if ((char_u **)opp->p_var == &p_pt)
       str2specialbuf(p_pt, NameBuff, MAXPATHL);
     else
       vim_strncpy(NameBuff, varp, MAXPATHL - 1);
